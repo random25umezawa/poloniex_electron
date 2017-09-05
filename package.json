@@ -1,0 +1,9 @@
+{
+  "name": "LocalPoloniexViewer",
+  "version": "0.1.0",
+  "main": "src/main.js",
+  "devDependencies": {
+    "request": "^2.81.0",
+    "sqlite3": "^3.1.9"
+  }
+}

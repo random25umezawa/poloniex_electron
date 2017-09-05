@@ -1,0 +1,20 @@
+<head>
+	<script>
+		window.jQuery = window.$ = require("../plugin/jquery.min");
+		var ipc = require("electron").ipcRenderer;
+	</script>
+	<link href="../plugin/bootstrap.min.css" rel="stylesheet" type="text/css">
+	<script src="../plugin/bootstrap.min.js"></script>
+</head>
+<body>
+	<button class="btn btn-danger">OK</button>
+
+	<script>
+		ipc.on("rep",function(event,arg) {
+			console.log("reply",event,arg);
+		})
+		$(document).ready(function() {
+			ipc.send("mes",{message:"nil"});
+		});
+	</script>
+</body>
