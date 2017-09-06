@@ -1,2 +1,4 @@
 electron-v1.7-win32-x64(sqlite3tolibbinding)
-node_modules
+.db.sqlite3
+node_modules/*
+!node_modules/poloniex

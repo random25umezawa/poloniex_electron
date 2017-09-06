@@ -7,9 +7,8 @@ const path = require("path");
 const url = require("url");
 
 const sqlite3 = require("sqlite3").verbose();
-var db = new sqlite3.Database(".db.sqlite3");
-const request = require("request");
-const jssha = require("jssha");
+//var db = new sqlite3.Database(".db.sqlite3");
+const Poloniex = require("poloniex");
 
 const key_set = require("./key_set.json");
 
@@ -46,42 +45,16 @@ app.on("activate",function() {
 });
 
 ipc.on("mes",function(event,arg) {
-	var postdata = {command:"returnChartData",currencyPair:"BTC_STEEM",start:"1504538200",end:"9999999999",period:"1800"};
-	//var postdata = {command:"returnBalances"};
-	postdata["nonce"] = (new Date()).getTime();
-	var temp_stringarr = [];
-	for(var key in postdata) {
-		temp_stringarr.push(key+"="+postdata[key]);
-	}
-	var poststring = temp_stringarr.join("&");
-	var hashed = new jssha("SHA-512","TEXT");
-	hashed.setHMACKey(key_set.secret,"TEXT");
-	hashed.update(poststring);
-	//console.log(hashed.getHMAC("HEX"));
-	console.log(key_set.key);
-	console.log(key_set.secret);
-	console.log(postdata);
-	console.log(poststring);
-	console.log("https://poloniex.com/tradingApi?"+poststring);
-	console.log(hashed.getHMAC("HEX"));
-
-	var req = request({
-			url: "https://poloniex.com/tradingApi",
-			form: postdata,
-			//url: "https://poloniex.com/public?command=returnChartData&currencyPair=BTC_STEEM&start=1504538200&end=9999999999&period=1800"
-			method: "POST",
-			headers: {
-				//"User-Agent": 'Mozilla/4.0 (compatible; Poloniex nodejs bot;)',
-				"Key": key_set.key,
-				"Sign": hashed.getHMAC("HEX")
-			}
-		}
-		,function(error,response,body) {
-		console.log(error);
-		//console.log(response);
-		console.log(body);
-
-		event.sender.send("rep",response);
+	let polo = new Poloniex(key_set.key, key_set.secret);
+	let res = [];
+	polo.getBalances(function(result) {
+		res.push(result);
+		polo.getOpenOrders(function(result2) {
+			res.push(result2);
+			polo.getTradeHistory(function(result3) {
+				res.push(result3);
+				event.sender.send("rep",res);
+			});
+		});
 	});
-	//console.log(req);
 });
