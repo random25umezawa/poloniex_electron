@@ -45,15 +45,18 @@ app.on("activate",function() {
 });
 
 ipc.on("getTradeHistory",function(event,arg) {
-	if(!arg.pair) return;
+	if(!arg.currencyPair) return;
 	polo.getTradeHistory(function(result) {
 		event.sender.send("returnTradeHistory",result);
-	},arg.pair);
+	},arg);
 });
 
 ipc.on("getChartData",function(event,arg) {
-	if(!arg.pair) return;
+	if(!arg.currencyPair) return;
+	if(!arg.period) arg.period = 86400;
+	if(!arg.start) arg.start = 1504743191-1000000;
+	if(!arg.end) arg.end = 9999999999;
 	polo.getChartData(function(result) {
 		event.sender.send("returnChartData",result);
-	},arg.pair);
+	},arg);
 });

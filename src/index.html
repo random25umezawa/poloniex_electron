@@ -11,29 +11,41 @@
 	<input type="text" id="pair">
 	<button class="btn btn-danger" id="getTradeHistory">getTradeHistory</button>
 	<button class="btn btn-danger" id="getChartData">getChartData</button>
-	<svg id="graph" style="width:100%"></svg>
+	<svg id="chartData" style="width:100%"></svg>
+	<svg id="tradeHistory" style="width:100%"></svg>
 
 	<script>
+		var chartData = [];
 		var tradeHistory = [];
 		var scaleX = d3.scaleLinear().domain([0,1]).range([0,1]);
 		var scaleY = d3.scaleLinear().domain([0,1]).range([0,1]);
 		var scaleR = d3.scaleLinear().domain([0,1]).range([0,1]);
 		var width = 500;
 		var height = 300;
+		var chart_start_date = +new Date()/1000-86400*12;
+		var chart_end_date = +new Date()/1000;
+		var chart_period = 1800;
+		var chart_scaleX = d3.scaleLinear().domain([0,1]).range([0,1]);
+		var chart_scaleY = d3.scaleLinear().domain([0,1]).range([0,1]);
+		var chart_pair = "";
 
 		ipc.on("returnTradeHistory",function(event,arg) {
-			//console.log("reply",event,arg);
 			tradeHistory = arg;
+			updateGraph();
+		})
+		ipc.on("returnChartData",function(event,arg) {
+			chart_pair = $("#pair").val();
+			chartData = arg;
 			updateGraph();
 		})
 		$(document).ready(function() {
 			resizeGraph();
 		});
 		$("#getTradeHistory").on("click",function() {
-			ipc.send("getTradeHistory",{pair:$("#pair").val()});
+			ipc.send("getTradeHistory",{currencyPair:$("#pair").val()});
 		});
 		$("#getChartData").on("click",function() {
-			ipc.send("getChartData",{pair:$("#pair").val()});
+			ipc.send("getChartData",{currencyPair:$("#pair").val(),period:chart_period});
 		});
 
 		var _resize_timer = 0;
@@ -48,19 +60,30 @@
 			scaleX = d3.scaleLinear().domain(d3.extent(tradeHistory,function(d){return +new Date(d.date)})).range([0+width/10,width-width/10]);
 			scaleY = d3.scaleLinear().domain(d3.extent(tradeHistory,function(d){return d.rate})).range([0+height/10,height-height/10]);
 			scaleR = d3.scaleLinear().domain(d3.extent(tradeHistory,function(d){return Math.sqrt(d.total)})).range([0,5]);
-			d3.select("#graph").selectAll("circle").data(tradeHistory,function(d){return d.globalTradeID}).exit().remove();
-			d3.select("#graph").selectAll("circle").data(tradeHistory,function(d){return d.globalTradeID}).enter().append("circle");
-			d3.select("#graph").selectAll("circle")
+			d3.select("#tradeHistory").selectAll("circle").data(tradeHistory,function(d){return d.globalTradeID}).exit().remove();
+			d3.select("#tradeHistory").selectAll("circle").data(tradeHistory,function(d){return d.globalTradeID}).enter().append("circle");
+			d3.select("#tradeHistory").selectAll("circle")
 				.data(tradeHistory,function(d){return d.globalTradeID})
 				.attr("cx",function(d){return scaleX(+new Date(d.date))})
-				//.attr("x",function(d,i){return i*width/tradeHistory.length})
 				.attr("cy",function(d){return height-scaleY(d.rate)})
 				.attr("r",function(d){return scaleR(Math.sqrt(d.total))})
 				.attr("fill",function(d){if(d.type=="sell")return "blue";else if(d.type=="buy")return "red";else return "gray";})
 			;
+			chart_scaleX = d3.scaleLinear().domain(d3.extent(chartData,function(d){return +new Date(d.date)})).range([0+width/10,width-width/10]);
+			chart_scaleY = d3.scaleLinear().domain(d3.extent(chartData,function(d){return d.close})).range([0+height/10,height-height/10]);
+			d3.select("#chartData").selectAll("rect").data(chartData,function(d){return chart_pair+d.date}).exit().remove();
+			d3.select("#chartData").selectAll("rect").data(chartData,function(d){return chart_pair+d.date}).enter().append("rect");
+			d3.select("#chartData").selectAll("rect")
+				.data(chartData,function(d){return chart_pair+d.date})
+				.attr("x",function(d){return chart_scaleX(+new Date(d.date))})
+				.attr("y",function(d){return height-chart_scaleY(Math.max(d.open,d.close))})
+				.attr("width",function(d){return chart_scaleX(+new Date(d.date))-chart_scaleX(+new Date(d.date)-chart_period)})
+				.attr("height",function(d){return Math.abs(chart_scaleY(d.open)-chart_scaleY(d.close))})
+				.attr("fill",function(d){if(d.open<d.close)return "blue";else return "red";})
+			;
 		}
 		function resizeGraph() {
-			var svgelement = $("#graph");
+			var svgelement = $("svg");
 			width = svgelement.width();
 			height = width*3/5;
 			svgelement.height(height);
