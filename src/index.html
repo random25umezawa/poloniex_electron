@@ -5,16 +5,66 @@
 	</script>
 	<link href="../plugin/bootstrap.min.css" rel="stylesheet" type="text/css">
 	<script src="../plugin/bootstrap.min.js"></script>
+	<script src="../plugin/d3.min.js"></script>
 </head>
 <body>
-	<button class="btn btn-danger">OK</button>
+	<input type="text" id="pair">
+	<button class="btn btn-danger" id="getTradeHistory">getTradeHistory</button>
+	<button class="btn btn-danger" id="getChartData">getChartData</button>
+	<svg id="graph" style="width:100%"></svg>
 
 	<script>
-		ipc.on("rep",function(event,arg) {
-			console.log("reply",event,arg);
+		var tradeHistory = [];
+		var scaleX = d3.scaleLinear().domain([0,1]).range([0,1]);
+		var scaleY = d3.scaleLinear().domain([0,1]).range([0,1]);
+		var scaleR = d3.scaleLinear().domain([0,1]).range([0,1]);
+		var width = 500;
+		var height = 300;
+
+		ipc.on("returnTradeHistory",function(event,arg) {
+			//console.log("reply",event,arg);
+			tradeHistory = arg;
+			updateGraph();
 		})
 		$(document).ready(function() {
-			ipc.send("mes",{message:"nil"});
+			resizeGraph();
 		});
+		$("#getTradeHistory").on("click",function() {
+			ipc.send("getTradeHistory",{pair:$("#pair").val()});
+		});
+		$("#getChartData").on("click",function() {
+			ipc.send("getChartData",{pair:$("#pair").val()});
+		});
+
+		var _resize_timer = 0;
+		$(window).resize(function() {
+			if(_resize_timer>0) clearTimeout(_resize_timer);
+			_resize_timer = setTimeout(function() {
+				resizeGraph();
+			},100)
+		});
+
+		function updateGraph() {
+			scaleX = d3.scaleLinear().domain(d3.extent(tradeHistory,function(d){return +new Date(d.date)})).range([0+width/10,width-width/10]);
+			scaleY = d3.scaleLinear().domain(d3.extent(tradeHistory,function(d){return d.rate})).range([0+height/10,height-height/10]);
+			scaleR = d3.scaleLinear().domain(d3.extent(tradeHistory,function(d){return Math.sqrt(d.total)})).range([0,5]);
+			d3.select("#graph").selectAll("circle").data(tradeHistory,function(d){return d.globalTradeID}).exit().remove();
+			d3.select("#graph").selectAll("circle").data(tradeHistory,function(d){return d.globalTradeID}).enter().append("circle");
+			d3.select("#graph").selectAll("circle")
+				.data(tradeHistory,function(d){return d.globalTradeID})
+				.attr("cx",function(d){return scaleX(+new Date(d.date))})
+				//.attr("x",function(d,i){return i*width/tradeHistory.length})
+				.attr("cy",function(d){return height-scaleY(d.rate)})
+				.attr("r",function(d){return scaleR(Math.sqrt(d.total))})
+				.attr("fill",function(d){if(d.type=="sell")return "blue";else if(d.type=="buy")return "red";else return "gray";})
+			;
+		}
+		function resizeGraph() {
+			var svgelement = $("#graph");
+			width = svgelement.width();
+			height = width*3/5;
+			svgelement.height(height);
+			updateGraph();
+		}
 	</script>
 </body>

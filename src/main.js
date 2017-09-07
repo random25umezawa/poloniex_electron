@@ -7,10 +7,10 @@ const path = require("path");
 const url = require("url");
 
 const sqlite3 = require("sqlite3").verbose();
-//var db = new sqlite3.Database(".db.sqlite3");
+//var db = new sqlite3.Database("../db/trade_data.sqlite3");
 const Poloniex = require("poloniex");
-
 const key_set = require("./key_set.json");
+var polo = new Poloniex(key_set.key, key_set.secret);
 
 let mainWindow;
 
@@ -44,17 +44,16 @@ app.on("activate",function() {
 	}
 });
 
-ipc.on("mes",function(event,arg) {
-	let polo = new Poloniex(key_set.key, key_set.secret);
-	let res = [];
-	polo.getBalances(function(result) {
-		res.push(result);
-		polo.getOpenOrders(function(result2) {
-			res.push(result2);
-			polo.getTradeHistory(function(result3) {
-				res.push(result3);
-				event.sender.send("rep",res);
-			});
-		});
-	});
+ipc.on("getTradeHistory",function(event,arg) {
+	if(!arg.pair) return;
+	polo.getTradeHistory(function(result) {
+		event.sender.send("returnTradeHistory",result);
+	},arg.pair);
+});
+
+ipc.on("getChartData",function(event,arg) {
+	if(!arg.pair) return;
+	polo.getChartData(function(result) {
+		event.sender.send("returnChartData",result);
+	},arg.pair);
 });
